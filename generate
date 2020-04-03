@@ -36,7 +36,9 @@ const parseArgs = (args, positions) => {
 		if (!positions.some(position => {
 			if(position.indexOf(args[0]) != -1) {
 				const name = position[1].substring(2, position[1].length);
-				const reader = position[2] || defaultReader;
+				const reader = (typeof position[position.length - 1] === "function")
+					? position[position.length - 1]
+					: defaultReader;
 				args.splice(0, reader(map, args[1], name) || 1);
 				return true
 			}
