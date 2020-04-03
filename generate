@@ -114,8 +114,8 @@ while(index < total && numberOfOperations < max) {
 	const next = [];
 	for(var setIndex = 0; setIndex < columns; setIndex += 1) {
 		const set = sets[setIndex % sets.length];
-		const mod = preCombinations[setIndex];
-		next.push(set[Math.floor(index / mod) % set.length])
+		const combinationsBeforeThisColumn = preCombinations[setIndex];
+		next.push(set[Math.floor(index / combinationsBeforeThisColumn) % set.length])
 	}
 	index += oneEveryX;
 	numberOfOperations += 1;
