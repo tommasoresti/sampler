@@ -57,6 +57,7 @@ const args = parseArgs(process.argv.slice(2), [
 	['-pos', '--positions'],
 	['-div', '--divider'],
 	['-r', '--rate'],
+	['-rr', '--random-rate'],
 	['-m', '--max'],
 	['-p', '--prepend'],
 	['-a', '--append'],
@@ -74,7 +75,8 @@ const format = args.pos.format || "%s";
 const divider = args.pos.divider || "";
 const positions = args.pos.positions || [...Array(columns).keys()].reduce((acc, i) => acc += `{${i + 1}}`, "");
 var max = parseInt(args.pos.max, 10) || Number.MAX_SAFE_INTEGER;
-const oneEveryX = parseInt(args.pos.rate, 10) || 1;
+const randomRate = args.pos['random-rate'] !== undefined;
+const oneEveryX = parseInt(args.pos['random-rate'] || args.pos.rate, 10) || 1;
 
 /**
  * Calculate operation's size
@@ -98,7 +100,7 @@ if(dryRun) {
 	preCombinations.forEach((_,i) => console.log(`  [${i}]: ${sets[i] ? sets[i].length : "-"} [mod: ${preCombinations[i]}]`));
 	console.log(`\nTotal combinations: ${total};`);
 	console.log(`This process will generate ` + (max > maxByRate
-		? `1 result every ${oneEveryX}: ~${maxByRate} in total.\n`
+		? `1 result every ${randomRate ? "~" : ""}${oneEveryX}: ${randomRate ? "~" : ""}${maxByRate} in total.\n`
 		: `${max} results in total.\n`));
 
 	console.log("Example:\n")
@@ -117,7 +119,7 @@ while(index < total && numberOfOperations < max) {
 		const combinationsBeforeThisColumn = preCombinations[setIndex];
 		next.push(set[Math.floor(index / combinationsBeforeThisColumn) % set.length])
 	}
-	index += Math.ceil(Math.random() * (oneEveryX * 2));
+	index += randomRate ? Math.ceil(Math.random() * (oneEveryX * 2)) : oneEveryX;
 	numberOfOperations += 1;
 
 	console.log(`${prepend}${positions.format(format, divider, next)}${append}`)
