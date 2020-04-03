@@ -98,7 +98,7 @@ if(dryRun) {
 	preCombinations.forEach((_,i) => console.log(`  [${i}]: ${sets[i] ? sets[i].length : "-"} [mod: ${preCombinations[i]}]`));
 	console.log(`\nTotal combinations: ${total};`);
 	console.log(`This process will generate ` + (max > maxByRate
-		? `1 result every ${oneEveryX}: ${maxByRate} in total.\n`
+		? `1 result every ${oneEveryX}: ~${maxByRate} in total.\n`
 		: `${max} results in total.\n`));
 
 	console.log("Example:\n")
@@ -117,7 +117,7 @@ while(index < total && numberOfOperations < max) {
 		const combinationsBeforeThisColumn = preCombinations[setIndex];
 		next.push(set[Math.floor(index / combinationsBeforeThisColumn) % set.length])
 	}
-	index += oneEveryX;
+	index += Math.ceil(Math.random() * (oneEveryX * 2));
 	numberOfOperations += 1;
 
 	console.log(`${prepend}${positions.format(format, divider, next)}${append}`)
