@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const readline = require('readline');
 const fs = require('fs');
 
 const toArray = file => fs.readFileSync(file).toString('utf-8').trim().split("\n")
@@ -30,16 +29,23 @@ const parseArgs = (args, positions) => {
 		list: [],
 	};
 
+	const popSet = (set, args) => Array.isArray(set) ? map.list.push(set) && args.splice(0, 2) : null;
+	const defaultReader = (map, arg, name) => {
+		const boolean = !arg || arg[0] === '-';
+		map.pos[name] = boolean ? true : arg;
+		return boolean ? 1 : 2;
+	}
+
 	while(args.length > 0) {
 		if (!positions.some(position => {
 			if(position.indexOf(args[0]) != -1) {
-				const boolean = !args[1] || args[1][0] === '-';
-				map.pos[position[1].substring(2, position[1].length)] = boolean ? true : args[1];
-				args.splice(0, boolean ? 1 : 2);
+				const name = position[1].substring(2, position[1].length);
+				const reader = position[2] || defaultReader;
+				args.splice(0, reader(map, args[1], name) || 1);
 				return true
 			}
 		})) {
-			map.list.push(args[0]);
+			map.list.push(toArray(args[0]));
 			args.shift();
 		}
 	}
@@ -50,33 +56,42 @@ const parseArgs = (args, positions) => {
 /**
  * Parse arguments
  */
-const args = parseArgs(process.argv.slice(2), [['-f', '--format'], ['-r', '--rate'], ['-d', '--dry-run'], ['-m', '--max']])
+const args = parseArgs(process.argv.slice(2), [
+	['-f', '--format'], 
+	['-r', '--rate'], 
+	['-d', '--dry-run'], 
+	['-m', '--max'], 
+	['-p', '--prepend'],
+	['-a', '--append'],
+	['-c', '--columns'],
+	['-j', '--json', (map, arg) => { map.list.push(JSON.parse(arg)); return 2; }],
+	['-t', '--text', (map, arg) => { map.list.push(arg.split(/\s+/)); return 2; }],
+]);
 
-const format = args.pos.format || files.reduce((acc, _, i) => acc += `{${i + 1}}`, "");
+const sets = args.list;
 const dryRun = args.pos["dry-run"] || false;
+const append = args.pos.append || "";
+const prepend = args.pos.prepend || "";
+const columns = parseInt(args.pos.columns, 10) || sets.length;
+const format = args.pos.format || [...Array(columns).keys()].reduce((acc, i) => acc += `{${i + 1}}`, "");
 var max = parseInt(args.pos.max, 10) || Number.MAX_SAFE_INTEGER;
 const oneEveryX = parseInt(args.pos.rate, 10) || 1;
-const files = args.list;
 
 /**
- * Create sets
+ * Calculate operation's size
  */
-const sets = []
-const setSizes = []
+const setModForPlainIndex = []
 let total = 1;
-for (var i = files.length - 1; i >= 0; i--) {
-	const set = toArray(files[i])
-	total *= set.length;
-	setSizes.unshift(set.length * setSizes[0] || 1);
-	sets.unshift(set)
+for (var i = columns - 1; i >= 0; i--) {
+	total *= sets[i % sets.length].length;
+	setModForPlainIndex.unshift(sets[i % sets.length].length * setModForPlainIndex[0] || 1);
 }
 
 /**
  * Check if dry run
  */
 if(dryRun) {
-	const maxByRate = Math.floor(total / oneEveryX)
-	console.log("\nArguments:\n\n", args);
+	const maxByRate = Math.ceil(total / oneEveryX)
 	console.log(`\nTotal combinations: ${total};`);
 	console.log(`This process will generate ` + (max > maxByRate
 		? `1 result every ${oneEveryX}: ${maxByRate} in total.\n`
@@ -93,12 +108,14 @@ let index = 0;
 let numberOfOperations = 0
 while(index < total && numberOfOperations < max) {
 	const next = [];
-	sets.forEach((domain, domainIndex) => {
-		next.push(domain[Math.floor(index / setSizes[domainIndex]) % domain.length])
-	})
+	for(var setIndex = 0; setIndex < columns; setIndex += 1) {
+		const set = sets[setIndex % sets.length];
+		const mod = setModForPlainIndex[setIndex];
+		next.push(set[Math.floor(index / mod) % set.length])
+	}
 	index += oneEveryX;
 	numberOfOperations += 1;
 
-	console.log(format.format(...next))
+	console.log(`${prepend}${format.format(...next)}${append}`)
 }
 		
