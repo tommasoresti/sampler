@@ -62,7 +62,7 @@ const args = parseArgs(process.argv.slice(2), [
 	['-a', '--append'],
 	['-c', '--columns'],
 	['-d', '--dry-run', parseBoolean],
-	['-j', '--json', (map, arg) => map.list.push(JSON.parse(arg)) && 2]
+	['-j', '--json', (map, arg) => map.list.push(JSON.parse(arg.replace(/'/g, '"'))) && 2]
 ]);
 
 const sets = args.list;
