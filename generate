@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-
-const toArray = file => fs.readFileSync(file).toString('utf-8').trim().split("\n")
+const util = require('util');
 
 String.prototype.regexIndexOf =function(regex, startpos) {
 	const indexOf = this.substring(startpos || 0).search(regex)
@@ -11,30 +10,27 @@ String.prototype.regexIndexOf =function(regex, startpos) {
 	    : indexOf;
 }
 
-String.prototype.format = function() {
+String.prototype.format = function(format, divider, arguments) {
 	let index = 0, next = 0, output = "";
     while((next = this.regexIndexOf('\\{([0-9]*?)\\}', index)) != -1) {
+    	output += index > 0 ? divider : ""
         output += this.substring(index, next);
         const number = this.substring(next + 1, this.indexOf('}', next + 1))
-    	output += arguments[parseInt(number, 10) - 1]
+    	output += util.format(format, arguments[parseInt(number, 10) - 1])
     	index = next + number.length + 2
     }
     output += this.substring(index, this.length)
     return output;
 };
 
+const parseBoolean = (map, arg, name) => (map.pos[name] = true) && 1
 const parseArgs = (args, positions) => {
 	const map = {
 		pos: {},
 		list: [],
 	};
 
-	const popSet = (set, args) => Array.isArray(set) ? map.list.push(set) && args.splice(0, 2) : null;
-	const defaultReader = (map, arg, name) => {
-		const boolean = !arg || arg[0] === '-';
-		map.pos[name] = boolean ? true : arg;
-		return boolean ? 1 : 2;
-	}
+	const defaultReader = (map, arg, name) => (map.pos[name] = arg) && 2
 
 	while(args.length > 0) {
 		if (!positions.some(position => {
@@ -45,7 +41,7 @@ const parseArgs = (args, positions) => {
 				return true
 			}
 		})) {
-			map.list.push(toArray(args[0]));
+			map.list.push(args[0].split(/\s+/));
 			args.shift();
 		}
 	}
@@ -57,15 +53,16 @@ const parseArgs = (args, positions) => {
  * Parse arguments
  */
 const args = parseArgs(process.argv.slice(2), [
-	['-f', '--format'], 
-	['-r', '--rate'], 
-	['-d', '--dry-run'], 
-	['-m', '--max'], 
+	['-f', '--format'],
+	['-pos', '--positions'],
+	['-div', '--divider'],
+	['-r', '--rate'],
+	['-m', '--max'],
 	['-p', '--prepend'],
 	['-a', '--append'],
 	['-c', '--columns'],
-	['-j', '--json', (map, arg) => { map.list.push(JSON.parse(arg)); return 2; }],
-	['-t', '--text', (map, arg) => { map.list.push(arg.split(/\s+/)); return 2; }],
+	['-d', '--dry-run', parseBoolean],
+	['-j', '--json', (map, arg) => map.list.push(JSON.parse(arg)) && 2]
 ]);
 
 const sets = args.list;
@@ -73,7 +70,9 @@ const dryRun = args.pos["dry-run"] || false;
 const append = args.pos.append || "";
 const prepend = args.pos.prepend || "";
 const columns = parseInt(args.pos.columns, 10) || sets.length;
-const format = args.pos.format || [...Array(columns).keys()].reduce((acc, i) => acc += `{${i + 1}}`, "");
+const format = args.pos.format || "%s";
+const divider = args.pos.divider || "";
+const positions = args.pos.positions || [...Array(columns).keys()].reduce((acc, i) => acc += `{${i + 1}}`, "");
 var max = parseInt(args.pos.max, 10) || Number.MAX_SAFE_INTEGER;
 const oneEveryX = parseInt(args.pos.rate, 10) || 1;
 
@@ -92,12 +91,15 @@ for (var i = columns - 1; i >= 0; i--) {
  */
 if(dryRun) {
 	const maxByRate = Math.ceil(total / oneEveryX)
+
+	console.log("\n Sets:")
+	sets.forEach((set,i) => console.log(`  [${i}]: ${set.length}`));
 	console.log(`\nTotal combinations: ${total};`);
 	console.log(`This process will generate ` + (max > maxByRate
 		? `1 result every ${oneEveryX}: ${maxByRate} in total.\n`
 		: `${max} results in total.\n`));
 
-	console.log("Example format:\n")
+	console.log("Example:\n")
 	max = 1;
 }
 
@@ -116,6 +118,6 @@ while(index < total && numberOfOperations < max) {
 	index += oneEveryX;
 	numberOfOperations += 1;
 
-	console.log(`${prepend}${format.format(...next)}${append}`)
+	console.log(`${prepend}${positions.format(format, divider, next)}${append}`)
 }
 		
