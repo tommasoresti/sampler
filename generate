@@ -79,11 +79,11 @@ const oneEveryX = parseInt(args.pos.rate, 10) || 1;
 /**
  * Calculate operation's size
  */
-const setModForPlainIndex = []
+const preCombinations = []
 let total = 1;
 for (var i = columns - 1; i >= 0; i--) {
 	total *= sets[i % sets.length].length;
-	setModForPlainIndex.unshift(sets[i % sets.length].length * setModForPlainIndex[0] || 1);
+	preCombinations.push((sets[i % sets.length].length * preCombinations[preCombinations.length-1]) || 1);
 }
 
 /**
@@ -93,7 +93,7 @@ if(dryRun) {
 	const maxByRate = Math.ceil(total / oneEveryX)
 
 	console.log("\n Sets:")
-	sets.forEach((set,i) => console.log(`  [${i}]: ${set.length}`));
+	preCombinations.forEach((_,i) => console.log(`  [${i}]: ${sets[i] ? sets[i].length : "-"} [mod: ${preCombinations[i]}]`));
 	console.log(`\nTotal combinations: ${total};`);
 	console.log(`This process will generate ` + (max > maxByRate
 		? `1 result every ${oneEveryX}: ${maxByRate} in total.\n`
@@ -112,7 +112,7 @@ while(index < total && numberOfOperations < max) {
 	const next = [];
 	for(var setIndex = 0; setIndex < columns; setIndex += 1) {
 		const set = sets[setIndex % sets.length];
-		const mod = setModForPlainIndex[setIndex];
+		const mod = preCombinations[setIndex];
 		next.push(set[Math.floor(index / mod) % set.length])
 	}
 	index += oneEveryX;
